@@ -1,12 +1,12 @@
 {
-  "name": "@abhiz123/todoist-mcp-server",
+  "name": "@kydycode/todoist-mcp-server-ext",
   "version": "0.1.0",
-  "description": "MCP server for Todoist API integration",
+  "description": "Extended MCP server for Todoist API integration with enhanced features and improved compatibility",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "bin": {
-    "todoist-mcp-server": "dist/index.js"
+    "todoist-mcp-server-ext": "dist/index.js"
   },
   "files": [
     "dist"
@@ -18,24 +18,28 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/abhiz123/todoist-mcp-server.git"
+    "url": "git+https://github.com/kydycode/todoist-mcp-server-ext.git"
   },
   "keywords": [
     "mcp",
     "todoist",
     "claude",
     "ai",
-    "task-management"
+    "task-management",
+    "extended",
+    "enhanced",
+    "kydycode"
   ],
-  "author": "abhiz123",
+  "author": "kydycode (extended version) - Original by abhiz123",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/abhiz123/todoist-mcp-server/issues"
+    "url": "https://github.com/kydycode/todoist-mcp-server-ext/issues"
   },
-  "homepage": "https://github.com/abhiz123/todoist-mcp-server#readme",
+  "homepage": "https://github.com/kydycode/todoist-mcp-server-ext#readme",
   "dependencies": {
     "@doist/todoist-api-typescript": "^3.0.3",
-    "@modelcontextprotocol/sdk": "0.5.0"
+    "@modelcontextprotocol/sdk": "0.5.0",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
