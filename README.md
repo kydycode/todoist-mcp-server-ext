@@ -3,68 +3,84 @@
 
 > **Extended Version** - Forked and enhanced by [kydycode](https://github.com/kydycode) from the original [@abhiz123/todoist-mcp-server](https://github.com/abhiz123/todoist-mcp-server)
 
-A comprehensive MCP (Model Context Protocol) server implementation that provides full integration between Claude and Todoist. This **extended version** includes additional features, improved compatibility, and enhanced functionality using the complete Todoist API with the latest MCP SDK.
+A comprehensive MCP (Model Context Protocol) server implementation that provides full integration between Claude and Todoist. This **extended version** includes additional features, improved compatibility, and enhanced functionality using the complete Todoist API with the latest MCP SDK (`@doist/todoist-api-typescript@4.0.4`).
 
 ## 🆕 Extended Version Features
 
 ### 🔧 **Technical Improvements**
-* **Updated MCP SDK Compatibility**: Compatible with MCP SDK 0.5.0 and latest versions
-* **Enhanced Error Handling**: Comprehensive error handling with detailed error messages
-* **Improved TypeScript Support**: Better type safety and compatibility
-* **Optimized API Usage**: Efficient use of Todoist API with proper parameter handling
-* **Better Response Formatting**: Enhanced task and project formatting for better readability
+* **Updated Todoist SDK**: Now using `@doist/todoist-api-typescript@4.0.4`.
+* **Updated MCP SDK Compatibility**: Compatible with MCP SDK 0.5.0.
+* **Enhanced Error Handling**: Comprehensive error handling with detailed error messages.
+* **Improved TypeScript Support**: Better type safety and compatibility.
+* **Optimized API Usage**: Efficient use of Todoist API, including `getTasksByFilter` for robust search and `moveTasks` for semantic task movement.
+* **Better Response Formatting**: Enhanced task, project, and label formatting for better readability, including project names in search results.
 
-### ✨ **Enhanced Task Management**
-* **Direct ID-based Operations**: Efficient task operations using task IDs instead of search
-* **Comprehensive Task Creation**: Support for subtasks, labels, projects, sections, priorities
-* **Quick Add Integration**: Natural language task creation using Todoist's Quick Add
-* **Advanced Task Search**: Content-based search with project scoping
-* **Task Movement Capabilities**: Move tasks between projects, sections, or make them subtasks
-* **Task State Management**: Complete, reopen, and manage task lifecycle
-* **Smart Filtering**: Enhanced filtering with better parameter handling
+### ✨ **Enhanced Task Management (10 Tools)**
+* **Direct ID-based Operations**: Efficient task operations using task IDs.
+* **Comprehensive Task Creation**: Support for subtasks, labels, projects, sections, priorities.
+* **Quick Add Integration**: Natural language task creation using Todoist's Quick Add.
+* **Advanced Task Search**: Robust keyword search using Todoist's filter engine (`search: your query`).
+* **Task Movement Capabilities**: Move tasks between projects, sections, or make them subtasks.
+* **Task State Management**: Complete, reopen, and manage task lifecycle.
+* **Detailed Task Output**: Search and get-task operations return more task details.
 
-### 🗂️ **Complete Project Management**
-* **Full Project CRUD**: Create, read, update, delete projects with all properties
-* **Sub-project Support**: Create hierarchical project structures
-* **Project Customization**: Set colors, favorites, view styles (list/board)
-* **Enhanced Project Listing**: Improved project retrieval and formatting
+### 🗂️ **Complete Project Management (5 Tools)**
+* **Full Project CRUD**: Create, read, update, delete projects with all properties.
+* **Sub-project Support**: Create hierarchical project structures.
+* **Project Customization**: Set colors, favorites, view styles (list/board).
+* **Enhanced Project Listing**: Improved project retrieval with pagination and detailed formatting.
 
-### 📋 **Section Management**
-* **Complete Section Operations**: Create, read, update, delete sections
-* **Project-specific Sections**: Filter and manage sections within projects
-* **Section Organization**: Proper ordering and structure management
+### 📋 **Section Management (4 Tools)**
+* **Complete Section Operations**: Create, read, update, delete sections.
+* **Project-specific Sections**: Filter and manage sections within projects.
+* **Section Organization**: Proper ordering and structure management.
 
-## 🛠️ Available Tools
+### 🏷️ **Label Management (5 Tools)**
+* **Full Label CRUD**: Create, read, update, delete labels.
+* **Label Customization**: Set names, colors, favorites, order.
+* **Paginated Label Listing**: Efficiently retrieve all labels.
+
+## 🛠️ Available Tools (Total 24)
 
 ### Task Operations (10 tools)
-| Tool | Description | Enhanced Features |
-|------|-------------|------------------|
-| `todoist_create_task` | Create tasks with full options | ✅ Subtasks, labels, projects, sections, priorities |
-| `todoist_quick_add_task` | Natural language task creation | ✅ Todoist Quick Add syntax support |
-| `todoist_get_tasks` | Retrieve tasks with filtering | ✅ Project, section, parent, label filtering |
-| `todoist_get_task` | Get specific task by ID | ✅ Direct ID-based retrieval |
-| `todoist_update_task` | Update task properties | ✅ Content, description, due date, priority, labels |
-| `todoist_delete_task` | Delete task by ID | ✅ Direct deletion with confirmation |
-| `todoist_complete_task` | Mark task complete | ✅ Instant completion |
-| `todoist_reopen_task` | Reopen completed task | ✅ Task restoration |
-| `todoist_search_tasks` | Search tasks by content | ✅ Project-scoped content search |
+| Tool                      | Description                                                                         |
+|---------------------------|-------------------------------------------------------------------------------------|
+| `todoist_create_task`     | Create tasks with full options (subtasks, labels, projects, sections, priorities).  |
+| `todoist_quick_add_task`  | Natural language task creation using Todoist's Quick Add syntax.                   |
+| `todoist_get_tasks`       | Retrieve tasks with filtering (project, section, parent, label, IDs) and pagination. |
+| `todoist_get_task`        | Get a specific task by its ID, with detailed information.                           |
+| `todoist_update_task`     | Update task properties (content, description, due date, priority, labels).        |
+| `todoist_delete_task`     | Delete task by ID.                                                                  |
+| `todoist_complete_task`   | Mark task complete.                                                                 |
+| `todoist_reopen_task`     | Reopen completed task.                                                              |
+| `todoist_search_tasks`    | Search tasks using Todoist's filter engine (e.g., `search: keyword`).              |
+| `todoist_move_task`       | Move a task to a different project, section, or make it a subtask.                  |
 
 ### Project Operations (5 tools)
-| Tool | Description | Enhanced Features |
-|------|-------------|------------------|
-| `todoist_get_projects` | List all active projects | ✅ Clean formatting, proper error handling |
-| `todoist_get_project` | Get specific project by ID | ✅ Direct project retrieval |
-| `todoist_create_project` | Create new project | ✅ Name, color, favorite, view style, sub-projects |
-| `todoist_update_project` | Update project properties | ✅ All project attributes |
-| `todoist_delete_project` | Delete project by ID | ✅ Safe deletion with confirmation |
+| Tool                       | Description                                                                   |
+|----------------------------|-------------------------------------------------------------------------------|
+| `todoist_get_projects`     | List all active projects with pagination support.                             |
+| `todoist_get_project`      | Get a specific project by its ID.                                             |
+| `todoist_create_project`   | Create new project (name, color, favorite, view style, sub-projects).         |
+| `todoist_update_project`   | Update project properties.                                                    |
+| `todoist_delete_project`   | Delete project by ID.                                                         |
 
 ### Section Operations (4 tools)
-| Tool | Description | Enhanced Features |
-|------|-------------|------------------|
-| `todoist_get_sections` | List sections | ✅ All sections or project-specific |
-| `todoist_create_section` | Create section in project | ✅ Name, project, ordering |
-| `todoist_update_section` | Update section name | ✅ Direct section modification |
-| `todoist_delete_section` | Delete section by ID | ✅ Clean section removal |
+| Tool                       | Description                                                     |
+|----------------------------|-----------------------------------------------------------------|
+| `todoist_get_sections`     | List sections (all sections or project-specific).               |
+| `todoist_create_section`   | Create section in project (name, project, ordering).            |
+| `todoist_update_section`   | Update section name.                                            |
+| `todoist_delete_section`   | Delete section by ID.                                           |
+
+### Label Operations (5 tools)
+| Tool                     | Description                                                        |
+|--------------------------|--------------------------------------------------------------------|
+| `todoist_create_label`   | Create a new label (name, color, favorite, order).               |
+| `todoist_get_label`      | Get a specific label by its ID.                                    |
+| `todoist_get_labels`     | List all labels with pagination support.                           |
+| `todoist_update_label`   | Update an existing label by its ID (name, color, favorite, order). |
+| `todoist_delete_label`   | Delete a label by its ID.                                          |
 
 ## 🚀 Installation & Setup
 
@@ -97,7 +113,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "todoist-mcp-server": {
       "command": "node",
-      "args": ["/path/to/todoist-mcp-server-ext/dist/index.js"],
+      "args": ["/path/to/your/todoist-mcp-server-ext/dist/index.js"],
       "env": {
         "TODOIST_API_TOKEN": "your_api_token_here"
       }
@@ -106,13 +122,13 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-#### Option 2: Run via npm (if installed globally)
+#### Option 2: Run via npm/npx (recommended for published version)
 ```json
 {
   "mcpServers": {
     "todoist-mcp-server": {
       "command": "npx",
-      "args": ["-y", "@kydycode/todoist-mcp-server-ext"],
+      "args": ["-y", "@kydycode/todoist-mcp-server-ext@latest"],
       "env": {
         "TODOIST_API_TOKEN": "your_api_token_here"
       }
@@ -124,7 +140,7 @@ Add to your `claude_desktop_config.json`:
 #### Option 3: Install globally first
 ```bash
 # Install the extended version globally
-npm install -g @kydycode/todoist-mcp-server-ext
+npm install -g @kydycode/todoist-mcp-server-ext@latest
 
 # Then use in Claude Desktop config
 {
@@ -141,53 +157,40 @@ npm install -g @kydycode/todoist-mcp-server-ext
 
 ## 📖 Usage Examples
 
-### 🎯 Advanced Task Creation
+### 🎯 Advanced Task Creation & Management
 ```
-"Create task 'Team Meeting' in project 'Work'"
-"Add high priority task 'Fix critical bug' with labels 'urgent' and 'backend'"
+"Create task 'Team Meeting @Tomorrow #Work p1'"
+"Add task 'Fix critical bug +KydyCode @DevProject L:Urgent L:Backend'"
 "Quick add: 'Buy milk tomorrow at 2pm #shopping !p1'"
-"Create subtask 'Prepare agenda' under existing task"
+"Move task with ID {task_id} to project {project_id}"
+"Search tasks: search: API deployment"
 ```
 
-### 🔍 Task Management & Search
-```
-"Get all tasks in project 'Work'"
-"Search for tasks containing 'meeting'"
-"Show task details for specific task ID"
-"Update task priority to urgent"
-"Complete task and then reopen it"
-```
-
-### 🗂️ Project Organization
+### 🗂️ Project, Section, and Label Management
 ```
 "List all my projects"
-"Create project 'Q1 Planning' with blue color and board view"
-"Create sub-project 'Marketing' under 'Business'"
-"Update project to favorite"
-"Get specific project details"
-```
-
-### 📋 Section Management
-```
-"Create section 'In Progress' in Development project"
-"List all sections in Work project"
-"Update section name to 'Completed'"
-"Delete empty section"
+"Create project 'Q2 Planning' color:blue favorite:true view:board"
+"Get sections for project {project_id}"
+"Create label 'HighPriority' color:red isFavorite:true"
+"List all labels"
 ```
 
 ## 🆚 Extended vs Original Comparison
 
-| Feature | Original | Extended Version |
-|---------|----------|------------------|
-| **MCP SDK Compatibility** | Older version | ✅ Latest MCP SDK 0.5.0+ |
-| **Error Handling** | Basic | ✅ Comprehensive with detailed messages |
-| **TypeScript Support** | Limited | ✅ Full type safety |
-| **Task Operations** | Search-based | ✅ Direct ID-based + Search fallback |
-| **Project Management** | Limited | ✅ Full CRUD operations |
-| **Section Management** | Basic | ✅ Complete section operations |
-| **API Parameter Handling** | Inconsistent | ✅ Proper parameter validation |
-| **Response Formatting** | Basic | ✅ Enhanced readability |
-| **Build System** | Issues | ✅ Clean compilation |
+| Feature                     | Original                             | Extended Version (`@kydycode/todoist-mcp-server-ext`) |
+|-----------------------------|--------------------------------------|-------------------------------------------------------|
+| **Todoist SDK Version**     | Older                                | ✅ `@doist/todoist-api-typescript@4.0.4`              |
+| **MCP SDK Compatibility**   | Older version                        | ✅ Latest MCP SDK 0.5.0+                              |
+| **Error Handling**          | Basic                                | ✅ Comprehensive with detailed messages               |
+| **TypeScript Support**      | Limited                              | ✅ Full type safety                                   |
+| **Task Operations**         | Search-based, limited features       | ✅ 10 Tools: Direct ID-based, `moveTasks`, robust search, QuickAdd, full CRUD-like ops |
+| **Project Management**      | Limited                              | ✅ 5 Tools: Full CRUD operations, sub-projects, pagination |
+| **Section Management**      | Basic                                | ✅ 4 Tools: Complete section operations               |
+| **Label Management**        | Not Available                        | ✅ 5 Tools: Full CRUD operations, pagination          |
+| **API Parameter Handling**  | Inconsistent                         | ✅ Proper parameter validation                          |
+| **Response Formatting**     | Basic                                | ✅ Enhanced readability, more details                 |
+| **Build System**            | Issues                               | ✅ Clean compilation                                  |
+| **Search Functionality**    | Basic local filter                   | ✅ Robust `getTasksByFilter` (Todoist engine)         |
 
 ## 🔧 Development
 
@@ -195,9 +198,13 @@ npm install -g @kydycode/todoist-mcp-server-ext
 ```
 src/
 ├── index.ts          # Main server implementation with all tools
-├── package.json      # Dependencies and scripts
-├── tsconfig.json     # TypeScript configuration
-└── dist/            # Compiled JavaScript output
+package.json      # Dependencies and scripts
+tsconfig.json     # TypeScript configuration
+README.md         # This file
+local-instructions.md # Personal publishing guide
+LICENSE
+.gitignore
+dist/             # Compiled JavaScript output (after `npm run build`)
     ├── index.js
     └── index.d.ts
 ```
@@ -211,14 +218,16 @@ npm install
 npm run build
 
 # Test the server (requires TODOIST_API_TOKEN)
-TODOIST_API_TOKEN=your_token node dist/index.js
+# Example: Set token and pipe a list tools request
+export TODOIST_API_TOKEN="your_actual_todoist_api_token"
+echo '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}' | node dist/index.js
 ```
 
 ### Development Scripts
 ```bash
-npm run build     # Compile TypeScript
-npm run watch     # Watch for changes and rebuild
-npm run prepare   # Pre-publish build
+npm run build     # Compile TypeScript and make output executable
+npm run watch     # Watch for changes and rebuild (doesn't make output executable)
+npm run prepare   # Pre-publish build (runs build)
 ```
 
 ## 🤝 Contributing
@@ -251,6 +260,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Related Links
 
 - **Extended Repository**: [kydycode/todoist-mcp-server-ext](https://github.com/kydycode/todoist-mcp-server-ext)
+- **NPM Package**: [`@kydycode/todoist-mcp-server-ext`](https://www.npmjs.com/package/@kydycode/todoist-mcp-server-ext)
 - **Original Repository**: [abhiz123/todoist-mcp-server](https://github.com/abhiz123/todoist-mcp-server)
 - [Todoist API Documentation](https://developer.todoist.com/)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
