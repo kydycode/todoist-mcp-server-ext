@@ -1,13 +1,9 @@
 # Enhanced Todoist MCP Server Extended
-[![smithery badge](https://smithery.ai/badge/@abhiz123/todoist-mcp-server)](https://smithery.ai/server/@abhiz123/todoist-mcp-server)
+[![smithery badge](https://smithery.ai/badge/@kydycode/todoist-mcp-server-ext)](https://smithery.ai/server/@kydycode/todoist-mcp-server-ext)
 
 > **Extended Version** - Forked and enhanced by [kydycode](https://github.com/kydycode) from the original [@abhiz123/todoist-mcp-server](https://github.com/abhiz123/todoist-mcp-server)
 
 A comprehensive MCP (Model Context Protocol) server implementation that provides full integration between Claude and Todoist. This **extended version** includes additional features, improved compatibility, and enhanced functionality using the complete Todoist API with the latest MCP SDK.
-
-<a href="https://glama.ai/mcp/servers/fhaif4fv1w">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/fhaif4fv1w/badge" alt="Todoist Server MCP server" />
-</a>
 
 ## 🆕 Extended Version Features
 
