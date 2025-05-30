@@ -225,6 +225,110 @@ const REOPEN_TASK_TOOL: Tool = {
   }
 };
 
+const MOVE_TASK_TOOL: Tool = {
+  name: "todoist_move_task",
+  description: "Move a task to a different project, section, or make it a subtask of another task. Provide the taskId and exactly one of: projectId, sectionId, or parentId.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      taskId: {
+        type: "string",
+        description: "The ID of the task to move."
+      },
+      projectId: {
+        type: "string",
+        description: "The ID of the destination project. (Optional, use only one of projectId, sectionId, parentId)"
+      },
+      sectionId: {
+        type: "string",
+        description: "The ID of the destination section. (Optional, use only one of projectId, sectionId, parentId)"
+      },
+      parentId: {
+        type: "string",
+        description: "The ID of the parent task to move this task under. (Optional, use only one of projectId, sectionId, parentId)"
+      }
+    },
+    required: ["taskId"]
+    // Note: Validation for providing exactly one of projectId, sectionId, or parentId
+    // is handled in the isMoveTaskArgs type guard and the tool handler.
+    // A more complex JSON schema with oneOf could enforce this, but client support varies.
+  }
+};
+
+// Label Management Tools
+const CREATE_LABEL_TOOL: Tool = {
+  name: "todoist_create_label",
+  description: "Create a new label.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      name: { type: "string", description: "The name of the label." },
+      color: { type: "string", description: "Label color name or code (e.g., 'berry_red', '#FF0000') (optional)." },
+      isFavorite: { type: "boolean", description: "Whether the label should be a favorite (optional)." },
+      order: { type: "number", description: "The order of the label in the list (optional)." }
+    },
+    required: ["name"]
+  }
+};
+
+const GET_LABEL_TOOL: Tool = {
+  name: "todoist_get_label",
+  description: "Get a specific label by its ID.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      labelId: { type: "string", description: "The ID of the label to retrieve." }
+    },
+    required: ["labelId"]
+  }
+};
+
+const GET_LABELS_TOOL: Tool = {
+  name: "todoist_get_labels",
+  description: "Get all labels. Supports pagination.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      cursor: { 
+        type: "string", 
+        description: "Pagination cursor for next page (optional)." 
+      },
+      limit: { 
+        type: "number", 
+        description: "Maximum number of labels to return (default: 50) (optional)." 
+      }
+    }
+  }
+};
+
+const UPDATE_LABEL_TOOL: Tool = {
+  name: "todoist_update_label",
+  description: "Update an existing label by its ID.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      labelId: { type: "string", description: "The ID of the label to update." },
+      name: { type: "string", description: "New name for the label (optional)." },
+      color: { type: "string", description: "New color for the label (optional)." },
+      isFavorite: { type: "boolean", description: "New favorite status (optional)." },
+      order: { type: "number", description: "New order for the label (optional)." }
+    },
+    required: ["labelId"]
+  }
+};
+
+const DELETE_LABEL_TOOL: Tool = {
+  name: "todoist_delete_label",
+  description: "Delete a label by its ID.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      labelId: { type: "string", description: "The ID of the label to delete." }
+    },
+    required: ["labelId"]
+  }
+};
+
 // Project Management Tools
 const GET_PROJECTS_TOOL: Tool = {
   name: "todoist_get_projects",
@@ -451,12 +555,29 @@ const server = new Server(
 
 // Helper function to format task output
 function formatTask(task: any): string {
-  return `- ${task.content}${task.description ? `\n  Description: ${task.description}` : ''}${task.due ? `\n  Due: ${task.due.string}` : ''}${task.priority && task.priority > 1 ? `\n  Priority: ${task.priority}` : ''}${task.labels && task.labels.length > 0 ? `\n  Labels: ${task.labels.join(', ')}` : ''}${task.parentId ? `\n  Parent: ${task.parentId}` : ''}`;
+  let taskDetails = `- ID: ${task.id}\n  Content: ${task.content}`;
+  if (task.description) taskDetails += `\n  Description: ${task.description}`;
+  if (task.due) taskDetails += `\n  Due: ${task.due.string}`;
+  if (task.priority && task.priority > 1) taskDetails += `\n  Priority: ${task.priority}`;
+  if (task.labels && task.labels.length > 0) taskDetails += `\n  Labels: ${task.labels.join(', ')}`;
+  if (task.projectId) taskDetails += `\n  Project ID: ${task.projectId}`;
+  if (task.sectionId) taskDetails += `\n  Section ID: ${task.sectionId}`;
+  if (task.parentId) taskDetails += `\n  Parent ID: ${task.parentId}`;
+  if (task.url) taskDetails += `\n  URL: ${task.url}`;
+  if (task.commentCount > 0) taskDetails += `\n  Comments: ${task.commentCount}`;
+  if (task.createdAt) taskDetails += `\n  Created At: ${task.createdAt}`;
+  if (task.creatorId) taskDetails += `\n  Creator ID: ${task.creatorId}`;
+  return taskDetails;
 }
 
 // Helper function to format project output
 function formatProject(project: any): string {
-  return `- ${project.name}${project.color ? `\n  Color: ${project.color}` : ''}${project.isFavorite ? `\n  Favorite: Yes` : ''}${project.viewStyle ? `\n  View: ${project.viewStyle}` : ''}${project.parentId ? `\n  Parent: ${project.parentId}` : ''}`;
+  return `- ${project.name}${project.color ? `\n  Color: ${project.color}` : ''}${project.isFavorite ? `\n  Favorite: Yes` : ''}${project.viewStyle ? `\n  View: ${project.viewStyle}` : ''}${project.parentId ? `\n  Parent: ${project.parentId}` : ''}${project.id ? ` (ID: ${project.id})` : ''}`;
+}
+
+// Helper function to format label output
+function formatLabel(label: any): string {
+  return `- ${label.name} (ID: ${label.id})${label.color ? `\n  Color: ${label.color}` : ''}${label.isFavorite ? `\n  Favorite: Yes` : ''}${label.order ? `\n  Order: ${label.order}`: ''}`;
 }
 
 // Type guards for arguments
@@ -534,6 +655,7 @@ function isProjectArgs(args: unknown): args is {
   cursor?: string;
   limit?: number;
 } {
+  // Allows empty object or object with optional cursor/limit
   return typeof args === "object" && args !== null;
 }
 
@@ -637,6 +759,72 @@ function isSearchTasksArgs(args: unknown): args is {
   );
 }
 
+function isMoveTaskArgs(args: unknown): args is {
+  taskId: string;
+  projectId?: string;
+  sectionId?: string;
+  parentId?: string;
+} {
+  if (typeof args !== 'object' || args === null || !('taskId' in args) || typeof (args as any).taskId !== 'string') {
+    return false;
+  }
+  const { projectId, sectionId, parentId } = args as any;
+  const destinations = [projectId, sectionId, parentId];
+  const providedDestinations = destinations.filter(dest => dest !== undefined && dest !== null && String(dest).trim() !== '');
+  
+  // Exactly one destination must be provided and be a non-empty string
+  return providedDestinations.length === 1 && 
+         providedDestinations.every(dest => typeof dest === 'string');
+}
+
+function isCreateLabelArgs(args: unknown): args is {
+  name: string;
+  color?: string;
+  isFavorite?: boolean;
+  order?: number;
+} {
+  return (
+    typeof args === "object" &&
+    args !== null &&
+    "name" in args &&
+    typeof (args as { name: string }).name === "string"
+  );
+}
+
+function isLabelIdArgs(args: unknown): args is {
+  labelId: string;
+} {
+  return (
+    typeof args === "object" &&
+    args !== null &&
+    "labelId" in args &&
+    typeof (args as { labelId: string }).labelId === "string"
+  );
+}
+
+// Type guard for get_labels which takes no arguments in this SDK version
+function isGetLabelsArgs(args: unknown): args is { 
+  cursor?: string;
+  limit?: number;
+} { 
+  return typeof args === "object" && args !== null;
+}
+
+function isUpdateLabelArgs(args: unknown): args is {
+  labelId: string;
+  name?: string;
+  color?: string;
+  isFavorite?: boolean;
+  order?: number;
+} {
+  return (
+    typeof args === "object" &&
+    args !== null &&
+    "labelId" in args &&
+    typeof (args as { labelId: string }).labelId === "string"
+  );
+}
+
 // Tool handlers
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
@@ -650,6 +838,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     COMPLETE_TASK_TOOL,
     REOPEN_TASK_TOOL,
     SEARCH_TASKS_TOOL,
+    MOVE_TASK_TOOL,
     // Project tools
     GET_PROJECTS_TOOL,
     GET_PROJECT_TOOL,
@@ -661,6 +850,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     CREATE_SECTION_TOOL,
     UPDATE_SECTION_TOOL,
     DELETE_SECTION_TOOL,
+    // Label tools
+    CREATE_LABEL_TOOL,
+    GET_LABEL_TOOL,
+    GET_LABELS_TOOL,
+    UPDATE_LABEL_TOOL,
+    DELETE_LABEL_TOOL,
   ],
 }));
 
@@ -845,34 +1040,52 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("Invalid arguments for todoist_search_tasks");
       }
 
-      const params: any = {};
-      if (args.projectId) params.projectId = args.projectId;
+      // Prepare arguments for getTasksByFilter
+      // Prepend "search: " to the query for more robust keyword searching with Todoist API
+      const searchQuery = args.query.startsWith("search:") ? args.query : `search: ${args.query}`;
+      const filterArgs: any = { query: searchQuery };
+      if (args.limit) filterArgs.limit = args.limit;
       
-      const tasks = await todoistClient.getTasks(params);
-      const allTasks = Array.isArray(tasks) ? tasks : (tasks as any).results || [];
-      
-      const matchingTasks = allTasks.filter((task: any) => 
-        task.content.toLowerCase().includes(args.query.toLowerCase())
-      ).slice(0, args.limit || 10);
+      // Note: args.projectId is not directly used by getTasksByFilter unless incorporated into the query string.
+      // For example: `search: ${args.query} & #ProjectName` or `search: ${args.query} & ##ProjectID`
 
-      if (matchingTasks.length === 0) {
+      const tasksResponse = await todoistClient.getTasksByFilter(filterArgs);
+      
+      const matchingTasksData = tasksResponse.results || [];
+
+      if (matchingTasksData.length === 0) {
         return {
           content: [{ 
             type: "text", 
-            text: `No tasks found matching "${args.query}"` 
+            text: `No tasks found matching the filter query "${args.query}"` 
           }],
           isError: false,
         };
       }
 
-      const taskList = matchingTasks.map((task: any) => 
-        `ID: ${task.id}\n${formatTask(task)}`
-      ).join('\n\n');
+      // Asynchronously format tasks and fetch project names if necessary
+      const formattedTaskList = await Promise.all(matchingTasksData.map(async (task: any) => {
+        let taskDisplay = formatTask(task); // formatTask now includes Project ID
+        if (task.projectId) {
+          try {
+            const project = await todoistClient.getProject(task.projectId);
+            taskDisplay += `\n  Project Name: ${project.name}`;
+          } catch (projectError: any) {
+            // Silently ignore project fetch errors for search, or log them
+            // taskDisplay += `\n  Project Name: (Error fetching project details)`; 
+            console.error(`Error fetching project ${task.projectId} for search result: ${projectError.message}`);
+          }
+        }
+        return taskDisplay;
+      }));
+      
+      const taskListString = formattedTaskList.join('\n\n');
+      const nextCursorMessage = tasksResponse.nextCursor ? `\n\nNext cursor for more results: ${tasksResponse.nextCursor}` : '';
       
       return {
         content: [{ 
           type: "text", 
-          text: `Found ${matchingTasks.length} task(s) matching "${args.query}":\n\n${taskList}` 
+          text: `Found ${matchingTasksData.length} task(s) matching "${args.query}":\n\n${taskListString}${nextCursorMessage}` 
         }],
         isError: false,
       };
@@ -888,18 +1101,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (args.cursor) params.cursor = args.cursor;
       if (args.limit) params.limit = args.limit;
 
-      // Note: getProjects() may not accept parameters in this API version
-      const projects = await todoistClient.getProjects();
+      const projectsResponse = await todoistClient.getProjects(params);
       
-      // Handle simple array response
-      const projectList = Array.isArray(projects) 
-        ? projects.map(formatProject).join('\n\n')
-        : 'No projects found';
+      const projectList = projectsResponse.results?.map(formatProject).join('\n\n') || 'No projects found';
+      const nextCursor = projectsResponse.nextCursor ? `\n\nNext cursor: ${projectsResponse.nextCursor}` : '';
       
       return {
         content: [{ 
           type: "text", 
-          text: `Projects:\n${projectList}` 
+          text: `Projects:\n${projectList}${nextCursor}` 
         }],
         isError: false,
       };
@@ -1055,6 +1265,120 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }],
         isError: false,
       };
+    }
+
+    // Label operations
+    if (name === "todoist_create_label") {
+      if (!isCreateLabelArgs(args)) {
+        return { content: [{ type: "text", text: "Invalid arguments for create_label" }], isError: true };
+      }
+      try {
+        const label = await todoistClient.addLabel(args);
+        return { 
+          content: [{ type: "text", text: `Label created:\n${formatLabel(label)}` }], 
+          isError: false 
+        };
+      } catch (error: any) {
+        return { content: [{ type: "text", text: `Error creating label: ${error.message}` }], isError: true };
+      }
+    }
+
+    if (name === "todoist_get_label") {
+      if (!isLabelIdArgs(args)) {
+        return { content: [{ type: "text", text: "Invalid arguments for get_label" }], isError: true };
+      }
+      try {
+        const label = await todoistClient.getLabel(args.labelId);
+        return { 
+          content: [{ type: "text", text: `Label details:\n${formatLabel(label)}` }], 
+          isError: false 
+        };
+      } catch (error: any) {
+        return { content: [{ type: "text", text: `Error getting label: ${error.message}` }], isError: true };
+      }
+    }
+
+    if (name === "todoist_get_labels") {
+      if (!isGetLabelsArgs(args)) {
+        return { content: [{ type: "text", text: "Invalid arguments for get_labels. This tool takes an optional cursor and limit." }], isError: true };
+      }
+      try {
+        const params: any = {};
+        if (args.cursor) params.cursor = args.cursor;
+        if (args.limit) params.limit = args.limit;
+        
+        const labelsResponse = await todoistClient.getLabels(params); 
+        const labelList = labelsResponse.results?.map(formatLabel).join('\n\n') || 'No labels found';
+        const nextCursor = labelsResponse.nextCursor ? `\n\nNext cursor for more labels: ${labelsResponse.nextCursor}` : '';
+
+        return {
+          content: [{
+            type: "text",
+            text: `Labels:\n${labelList}${nextCursor}`
+          }],
+          isError: false
+        };
+      } catch (error: any) {
+        return { content: [{ type: "text", text: `Error getting labels: ${error.message}` }], isError: true };
+      }
+    }
+
+    if (name === "todoist_update_label") {
+      if (!isUpdateLabelArgs(args)) {
+        return { content: [{ type: "text", text: "Invalid arguments for update_label" }], isError: true };
+      }
+      try {
+        const { labelId, ...updateArgs } = args;
+        const updatedLabel = await todoistClient.updateLabel(labelId, updateArgs);
+        return { 
+          content: [{ type: "text", text: `Label updated:\n${formatLabel(updatedLabel)}` }], 
+          isError: false 
+        };
+      } catch (error: any) {
+        return { content: [{ type: "text", text: `Error updating label: ${error.message}` }], isError: true };
+      }
+    }
+
+    if (name === "todoist_delete_label") {
+      if (!isLabelIdArgs(args)) {
+        return { content: [{ type: "text", text: "Invalid arguments for delete_label" }], isError: true };
+      }
+      try {
+        await todoistClient.deleteLabel(args.labelId);
+        return { 
+          content: [{ type: "text", text: `Label ${args.labelId} deleted.` }], 
+          isError: false 
+        };
+      } catch (error: any) {
+        return { content: [{ type: "text", text: `Error deleting label: ${error.message}` }], isError: true };
+      }
+    }
+
+    // Move task operations
+    if (name === "todoist_move_task") {
+      if (!isMoveTaskArgs(args)) {
+        return { content: [{ type: "text", text: "Invalid arguments for move_task. Provide taskId and exactly one of: projectId, sectionId, or parentId (must be a non-empty string)." }], isError: true };
+      }
+      try {
+        const moveArgs: { projectId?: string; sectionId?: string; parentId?: string } = {};
+        if (args.projectId) moveArgs.projectId = args.projectId;
+        else if (args.sectionId) moveArgs.sectionId = args.sectionId;
+        else if (args.parentId) moveArgs.parentId = args.parentId;
+
+        // Use moveTasks from SDK v4+
+        await todoistClient.moveTasks([args.taskId], moveArgs as any); // Cast to any for MoveTaskArgs as it expects RequireExactlyOne
+        
+        const movedTask = await todoistClient.getTask(args.taskId);
+        return {
+          content: [{
+            type: "text",
+            text: `Task ${args.taskId} moved successfully.\nNew details:\n${formatTask(movedTask)}`
+          }],
+          isError: false
+        };
+      } catch (error: any) {
+        return { content: [{ type: "text", text: `Error moving task: ${error.message}` }], isError: true };
+      }
     }
 
     return {
