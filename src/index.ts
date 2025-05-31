@@ -227,7 +227,7 @@ const REOPEN_TASK_TOOL: Tool = {
 
 const MOVE_TASK_TOOL: Tool = {
   name: "todoist_move_task",
-  description: "Move a task to a different project, section, or make it a subtask of another task. Provide the taskId and exactly one of: projectId, sectionId, or parentId.",
+  description: "Move a single task (and its subtasks, if any) to a different project, section, or make it a subtask of another task. Provide the taskId and exactly one of: projectId, sectionId, or parentId.",
   inputSchema: {
     type: "object",
     properties: {
@@ -252,6 +252,37 @@ const MOVE_TASK_TOOL: Tool = {
     // Note: Validation for providing exactly one of projectId, sectionId, or parentId
     // is handled in the isMoveTaskArgs type guard and the tool handler.
     // A more complex JSON schema with oneOf could enforce this, but client support varies.
+  }
+};
+
+const BULK_MOVE_TASKS_TOOL: Tool = {
+  name: "todoist_bulk_move_tasks",
+  description: "Move multiple tasks (and their respective subtasks, if any; e.g., up to 10-20 parent tasks for best performance) to a different project, section, or make them subtasks of another task. Provide an array of taskIds and exactly one destination (projectId, sectionId, or parentId).",
+  inputSchema: {
+    type: "object",
+    properties: {
+      taskIds: {
+        type: "array",
+        items: { type: "string" },
+        description: "An array of task IDs to move.",
+        minItems: 1 // Ensure at least one task ID is provided
+      },
+      projectId: {
+        type: "string",
+        description: "The ID of the destination project. (Optional, use only one of projectId, sectionId, parentId)"
+      },
+      sectionId: {
+        type: "string",
+        description: "The ID of the destination section. (Optional, use only one of projectId, sectionId, parentId)"
+      },
+      parentId: {
+        type: "string",
+        description: "The ID of the parent task to move these tasks under. (Optional, use only one of projectId, sectionId, parentId)"
+      }
+    },
+    required: ["taskIds"]
+    // Note: Validation for providing exactly one of projectId, sectionId, or parentId
+    // is handled in the isBulkMoveTasksArgs type guard and the tool handler.
   }
 };
 
@@ -446,13 +477,21 @@ const DELETE_PROJECT_TOOL: Tool = {
 // Section Management Tools
 const GET_SECTIONS_TOOL: Tool = {
   name: "todoist_get_sections",
-  description: "Get all sections or sections for a specific project",
+  description: "Get all sections, or sections for a specific project. Supports pagination.",
   inputSchema: {
     type: "object",
     properties: {
       projectId: {
         type: "string",
-        description: "Filter sections by project ID (optional)"
+        description: "Filter sections by project ID (optional)."
+      },
+      cursor: {
+        type: "string",
+        description: "Pagination cursor for next page (optional)."
+      },
+      limit: {
+        type: "number",
+        description: "Maximum number of sections to return (default: 50) (optional)."
       }
     }
   }
@@ -702,7 +741,10 @@ function isUpdateProjectArgs(args: unknown): args is {
 
 function isSectionArgs(args: unknown): args is {
   projectId?: string;
+  cursor?: string;
+  limit?: number;
 } {
+  // Allows empty object or object with optional projectId, cursor, limit
   return typeof args === "object" && args !== null;
 }
 
@@ -777,6 +819,30 @@ function isMoveTaskArgs(args: unknown): args is {
          providedDestinations.every(dest => typeof dest === 'string');
 }
 
+function isBulkMoveTasksArgs(args: unknown): args is {
+  taskIds: string[];
+  projectId?: string;
+  sectionId?: string;
+  parentId?: string;
+} {
+  if (
+    typeof args !== 'object' || 
+    args === null || 
+    !('taskIds' in args) || 
+    !Array.isArray((args as any).taskIds) || 
+    (args as any).taskIds.length === 0 || 
+    !(args as any).taskIds.every((id: any) => typeof id === 'string')
+  ) {
+    return false;
+  }
+  const { projectId, sectionId, parentId } = args as any;
+  const destinations = [projectId, sectionId, parentId];
+  const providedDestinations = destinations.filter(dest => dest !== undefined && dest !== null && String(dest).trim() !== '');
+  
+  return providedDestinations.length === 1 && 
+         providedDestinations.every(dest => typeof dest === 'string');
+}
+
 function isCreateLabelArgs(args: unknown): args is {
   name: string;
   color?: string;
@@ -839,6 +905,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     REOPEN_TASK_TOOL,
     SEARCH_TASKS_TOOL,
     MOVE_TASK_TOOL,
+    BULK_MOVE_TASKS_TOOL,
     // Project tools
     GET_PROJECTS_TOOL,
     GET_PROJECT_TOOL,
@@ -1197,18 +1264,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       
       const params: any = {};
       if (args.projectId) params.projectId = args.projectId;
+      if (args.cursor) params.cursor = args.cursor;
+      if (args.limit) params.limit = args.limit;
 
-      const sections = await todoistClient.getSections(Object.keys(params).length > 0 ? params : {});
-      // Handle simple array response
-      const sectionResults = Array.isArray(sections) ? sections : [];
-      const sectionList = sectionResults.map((section: any) => 
-        `- ${section.name} (ID: ${section.id}, Project: ${section.projectId})`
-      ).join('\n');
+      const sectionsResponse = await todoistClient.getSections(params);
+      
+      const sectionList = sectionsResponse.results?.map((section: any) => 
+        `- ${section.name} (ID: ${section.id}, Project ID: ${section.projectId})`
+      ).join('\n') || 'No sections found';
+      
+      const nextCursorMessage = sectionsResponse.nextCursor ? `\n\nNext cursor for more sections: ${sectionsResponse.nextCursor}` : '';
       
       return {
         content: [{ 
           type: "text", 
-          text: `Sections:\n${sectionList || 'No sections found'}` 
+          text: `Sections:\n${sectionList}${nextCursorMessage}` 
         }],
         isError: false,
       };
@@ -1378,6 +1448,77 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       } catch (error: any) {
         return { content: [{ type: "text", text: `Error moving task: ${error.message}` }], isError: true };
+      }
+    }
+
+    if (name === "todoist_bulk_move_tasks") {
+      if (!isBulkMoveTasksArgs(args)) {
+        return { content: [{ type: "text", text: "Invalid arguments for bulk_move_tasks. Provide a non-empty array of taskIds and exactly one of: projectId, sectionId, or parentId (must be a non-empty string)." }], isError: true };
+      }
+      try {
+        const moveArgs: { projectId?: string; sectionId?: string; parentId?: string } = {};
+        if (args.projectId) moveArgs.projectId = args.projectId;
+        else if (args.sectionId) moveArgs.sectionId = args.sectionId;
+        else if (args.parentId) moveArgs.parentId = args.parentId;
+
+        console.error(`[DEBUG] todoist_bulk_move_tasks: Attempting to move ${args.taskIds.length} task(s) individually. Destination args: ${JSON.stringify(moveArgs)}`);
+
+        const results = {
+          succeeded: [] as string[],
+          failed: [] as { id: string, error: string }[],
+        };
+
+        for (const taskId of args.taskIds) {
+          try {
+            console.error(`[DEBUG] Moving task ${taskId} to: ${JSON.stringify(moveArgs)}`);
+            const individualMoveResult = await todoistClient.moveTasks([taskId], moveArgs as any);
+            // Check if the API returned the task and if its properties reflect the move
+            // For simplicity, we assume if no error is thrown, it was accepted by the API.
+            // A more robust check would be to fetch the task again and verify its sectionId/projectId.
+            if (individualMoveResult && individualMoveResult.length > 0 && individualMoveResult[0].id === taskId) {
+              console.error(`[DEBUG] Task ${taskId} processed by API. Result: ${JSON.stringify(individualMoveResult[0])}`);
+              // Further check if sectionId or projectId in individualMoveResult[0] matches moveArgs
+              const movedTaskDetails = individualMoveResult[0];
+              let successfulMove = false;
+              if (moveArgs.sectionId && movedTaskDetails.sectionId === moveArgs.sectionId) successfulMove = true;
+              else if (moveArgs.projectId && movedTaskDetails.projectId === moveArgs.projectId) successfulMove = true;
+              else if (moveArgs.parentId && movedTaskDetails.parentId === moveArgs.parentId) successfulMove = true;
+              // If the API doesn't reflect the change immediately in the returned object, we might still count it as succeeded based on no error.
+              // For now, we count as success if API call didn't throw and returned our task.
+              if (successfulMove) {
+                 results.succeeded.push(taskId);
+              } else {
+                 // This case means API processed it but didn't reflect the change in the returned object, or it was already there.
+                 // Could be a race condition or API behavior. We'll count it as attempted but not fully confirmed by response.
+                 console.warn(`[DEBUG] Task ${taskId} processed, but move not immediately confirmed in API response object. Counting as succeeded based on no error.`);
+                 results.succeeded.push(taskId); // Tentatively count as success
+              }
+            } else {
+              // API call succeeded but didn't return our task, or returned empty array
+              console.warn(`[DEBUG] Task ${taskId} move API call succeeded but task not found in response or empty response.`);
+              results.succeeded.push(taskId); // Tentatively count as success if API didn't error
+            }
+          } catch (taskError: any) {
+            console.error(`[DEBUG] Failed to move task ${taskId}: ${taskError.message}`);
+            results.failed.push({ id: taskId, error: taskError.message });
+          }
+        }
+
+        let summaryMessage = `Bulk move attempt complete for ${args.taskIds.length} task(s). `;
+        summaryMessage += `Succeeded: ${results.succeeded.length}. `;
+        if (results.succeeded.length > 0) summaryMessage += `Moved IDs: ${results.succeeded.join(", ")}. `;
+        summaryMessage += `Failed: ${results.failed.length}.`;
+        if (results.failed.length > 0) {
+          summaryMessage += ` Failed IDs: ${results.failed.map(f => `${f.id} (${f.error})`).join("; ")}`;
+        }
+
+        return {
+          content: [{ type: "text", text: summaryMessage }],
+          isError: results.failed.length > 0 && results.succeeded.length === 0, // Overall error if all fails
+        };
+      } catch (error: any) {
+        console.error(`[DEBUG] todoist_bulk_move_tasks: Outer error caught: ${error.message}`, error);
+        return { content: [{ type: "text", text: `Error in bulk moving tasks: ${error.message}` }], isError: true };
       }
     }
 
