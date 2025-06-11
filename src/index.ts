@@ -579,6 +579,115 @@ const SEARCH_TASKS_TOOL: Tool = {
   }
 };
 
+// Comment Management Tools
+const CREATE_COMMENT_TOOL: Tool = {
+  name: "todoist_create_comment",
+  description: "Create a new comment on a task or project",
+  inputSchema: {
+    type: "object",
+    properties: {
+      content: {
+        type: "string",
+        description: "The content/text of the comment"
+      },
+      taskId: {
+        type: "string",
+        description: "Task ID to add comment to (provide either taskId or projectId, not both)"
+      },
+      projectId: {
+        type: "string",
+        description: "Project ID to add comment to (provide either taskId or projectId, not both)"
+      },
+      attachment: {
+        type: "object",
+        description: "Optional file attachment (optional)",
+        properties: {
+          fileName: { type: "string" },
+          fileType: { type: "string" },
+          fileUrl: { type: "string" },
+          resourceType: { type: "string" }
+        }
+      }
+    },
+    required: ["content"]
+  }
+};
+
+const GET_COMMENT_TOOL: Tool = {
+  name: "todoist_get_comment",
+  description: "Get a specific comment by its ID",
+  inputSchema: {
+    type: "object",
+    properties: {
+      commentId: {
+        type: "string",
+        description: "The ID of the comment to retrieve"
+      }
+    },
+    required: ["commentId"]
+  }
+};
+
+const GET_COMMENTS_TOOL: Tool = {
+  name: "todoist_get_comments",
+  description: "Get comments for a task or project with pagination support",
+  inputSchema: {
+    type: "object",
+    properties: {
+      taskId: {
+        type: "string",
+        description: "Task ID to get comments for (provide either taskId or projectId, not both)"
+      },
+      projectId: {
+        type: "string",
+        description: "Project ID to get comments for (provide either taskId or projectId, not both)"
+      },
+      cursor: {
+        type: "string",
+        description: "Pagination cursor for next page (optional)"
+      },
+      limit: {
+        type: "number",
+        description: "Maximum number of comments to return (optional)"
+      }
+    }
+  }
+};
+
+const UPDATE_COMMENT_TOOL: Tool = {
+  name: "todoist_update_comment",
+  description: "Update an existing comment by its ID",
+  inputSchema: {
+    type: "object",
+    properties: {
+      commentId: {
+        type: "string",
+        description: "The ID of the comment to update"
+      },
+      content: {
+        type: "string",
+        description: "New content/text for the comment"
+      }
+    },
+    required: ["commentId", "content"]
+  }
+};
+
+const DELETE_COMMENT_TOOL: Tool = {
+  name: "todoist_delete_comment",
+  description: "Delete a comment by its ID",
+  inputSchema: {
+    type: "object",
+    properties: {
+      commentId: {
+        type: "string",
+        description: "The ID of the comment to delete"
+      }
+    },
+    required: ["commentId"]
+  }
+};
+
 // Server implementation
 const server = new Server(
   {
@@ -617,6 +726,19 @@ function formatProject(project: any): string {
 // Helper function to format label output
 function formatLabel(label: any): string {
   return `- ${label.name} (ID: ${label.id})${label.color ? `\n  Color: ${label.color}` : ''}${label.isFavorite ? `\n  Favorite: Yes` : ''}${label.order ? `\n  Order: ${label.order}`: ''}`;
+}
+
+// Helper function to format comment output
+function formatComment(comment: any): string {
+  let commentDetails = `- ID: ${comment.id}\n  Content: ${comment.content}`;
+  if (comment.postedAt) commentDetails += `\n  Posted At: ${comment.postedAt}`;
+  if (comment.taskId) commentDetails += `\n  Task ID: ${comment.taskId}`;
+  if (comment.projectId) commentDetails += `\n  Project ID: ${comment.projectId}`;
+  if (comment.attachment) {
+    commentDetails += `\n  Attachment: ${comment.attachment.fileName || 'File'} (${comment.attachment.fileType})`;
+    if (comment.attachment.fileUrl) commentDetails += `\n  File URL: ${comment.attachment.fileUrl}`;
+  }
+  return commentDetails;
 }
 
 // Type guards for arguments
@@ -891,6 +1013,72 @@ function isUpdateLabelArgs(args: unknown): args is {
   );
 }
 
+function isCreateCommentArgs(args: unknown): args is {
+  content: string;
+  taskId?: string;
+  projectId?: string;
+  attachment?: {
+    fileName?: string;
+    fileType?: string;
+    fileUrl?: string;
+    resourceType?: string;
+  } | null;
+} {
+  if (typeof args !== "object" || args === null || !("content" in args) || typeof (args as any).content !== "string") {
+    return false;
+  }
+  const { taskId, projectId } = args as any;
+  const targets = [taskId, projectId];
+  const providedTargets = targets.filter(target => target !== undefined && target !== null && String(target).trim() !== '');
+  
+  // Exactly one target must be provided and be a non-empty string
+  return providedTargets.length === 1 && 
+         providedTargets.every(target => typeof target === 'string');
+}
+
+function isCommentIdArgs(args: unknown): args is {
+  commentId: string;
+} {
+  return (
+    typeof args === "object" &&
+    args !== null &&
+    "commentId" in args &&
+    typeof (args as { commentId: string }).commentId === "string"
+  );
+}
+
+function isCommentsArgs(args: unknown): args is {
+  taskId?: string;
+  projectId?: string;
+  cursor?: string;
+  limit?: number;
+} {
+  if (typeof args !== "object" || args === null) {
+    return false;
+  }
+  const { taskId, projectId } = args as any;
+  const targets = [taskId, projectId];
+  const providedTargets = targets.filter(target => target !== undefined && target !== null && String(target).trim() !== '');
+  
+  // Exactly one target must be provided and be a non-empty string, or no targets (for all comments)
+  return providedTargets.length <= 1 && 
+         providedTargets.every(target => typeof target === 'string');
+}
+
+function isUpdateCommentArgs(args: unknown): args is {
+  commentId: string;
+  content: string;
+} {
+  return (
+    typeof args === "object" &&
+    args !== null &&
+    "commentId" in args &&
+    "content" in args &&
+    typeof (args as { commentId: string; content: string }).commentId === "string" &&
+    typeof (args as { commentId: string; content: string }).content === "string"
+  );
+}
+
 // Tool handlers
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
@@ -923,6 +1111,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     GET_LABELS_TOOL,
     UPDATE_LABEL_TOOL,
     DELETE_LABEL_TOOL,
+    // Comment tools
+    CREATE_COMMENT_TOOL,
+    GET_COMMENT_TOOL,
+    GET_COMMENTS_TOOL,
+    UPDATE_COMMENT_TOOL,
+    DELETE_COMMENT_TOOL,
   ],
 }));
 
@@ -1519,6 +1713,100 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       } catch (error: any) {
         console.error(`[DEBUG] todoist_bulk_move_tasks: Outer error caught: ${error.message}`, error);
         return { content: [{ type: "text", text: `Error in bulk moving tasks: ${error.message}` }], isError: true };
+      }
+    }
+
+    // Comment operations
+    if (name === "todoist_create_comment") {
+      if (!isCreateCommentArgs(args)) {
+        return { content: [{ type: "text", text: "Invalid arguments for create_comment" }], isError: true };
+      }
+      try {
+        const commentData: any = { content: args.content };
+        if (args.taskId) commentData.taskId = args.taskId;
+        if (args.projectId) commentData.projectId = args.projectId;
+        if (args.attachment) commentData.attachment = args.attachment;
+
+        const comment = await todoistClient.addComment(commentData);
+        return { 
+          content: [{ type: "text", text: `Comment created:\n${formatComment(comment)}` }], 
+          isError: false 
+        };
+      } catch (error: any) {
+        return { content: [{ type: "text", text: `Error creating comment: ${error.message}` }], isError: true };
+      }
+    }
+
+    if (name === "todoist_get_comment") {
+      if (!isCommentIdArgs(args)) {
+        return { content: [{ type: "text", text: "Invalid arguments for get_comment" }], isError: true };
+      }
+      try {
+        const comment = await todoistClient.getComment(args.commentId);
+        return { 
+          content: [{ type: "text", text: `Comment details:\n${formatComment(comment)}` }], 
+          isError: false 
+        };
+      } catch (error: any) {
+        return { content: [{ type: "text", text: `Error getting comment: ${error.message}` }], isError: true };
+      }
+    }
+
+    if (name === "todoist_get_comments") {
+      if (!isCommentsArgs(args)) {
+        return { content: [{ type: "text", text: "Invalid arguments for get_comments. Provide either taskId or projectId, not both." }], isError: true };
+      }
+      try {
+        const params: any = {};
+        if (args.taskId) params.taskId = args.taskId;
+        if (args.projectId) params.projectId = args.projectId;
+        if (args.cursor) params.cursor = args.cursor;
+        if (args.limit) params.limit = args.limit;
+        
+        const commentsResponse = await todoistClient.getComments(params); 
+        const commentList = commentsResponse.results?.map(formatComment).join('\n\n') || 'No comments found';
+        const nextCursor = commentsResponse.nextCursor ? `\n\nNext cursor for more comments: ${commentsResponse.nextCursor}` : '';
+
+        return {
+          content: [{
+            type: "text",
+            text: `Comments:\n${commentList}${nextCursor}`
+          }],
+          isError: false
+        };
+      } catch (error: any) {
+        return { content: [{ type: "text", text: `Error getting comments: ${error.message}` }], isError: true };
+      }
+    }
+
+    if (name === "todoist_update_comment") {
+      if (!isUpdateCommentArgs(args)) {
+        return { content: [{ type: "text", text: "Invalid arguments for update_comment" }], isError: true };
+      }
+      try {
+        const { commentId, ...updateArgs } = args;
+        const updatedComment = await todoistClient.updateComment(commentId, updateArgs);
+        return { 
+          content: [{ type: "text", text: `Comment updated:\n${formatComment(updatedComment)}` }], 
+          isError: false 
+        };
+      } catch (error: any) {
+        return { content: [{ type: "text", text: `Error updating comment: ${error.message}` }], isError: true };
+      }
+    }
+
+    if (name === "todoist_delete_comment") {
+      if (!isCommentIdArgs(args)) {
+        return { content: [{ type: "text", text: "Invalid arguments for delete_comment" }], isError: true };
+      }
+      try {
+        await todoistClient.deleteComment(args.commentId);
+        return { 
+          content: [{ type: "text", text: `Comment ${args.commentId} deleted.` }], 
+          isError: false 
+        };
+      } catch (error: any) {
+        return { content: [{ type: "text", text: `Error deleting comment: ${error.message}` }], isError: true };
       }
     }
 

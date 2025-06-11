@@ -40,7 +40,13 @@ A comprehensive MCP (Model Context Protocol) server implementation that provides
 * **Label Customization**: Set names, colors, favorites, order.
 * **Paginated Label Listing**: Efficiently retrieve all labels.
 
-## 🛠️ Available Tools (Total 24)
+### 💬 **Comment Management (5 Tools)**
+* **Complete Comment CRUD**: Create, read, update, delete comments on tasks and projects.
+* **Attachment Support**: Add file attachments to comments with metadata.
+* **Flexible Targeting**: Comments can be attached to either tasks or projects.
+* **Paginated Comment Retrieval**: Efficiently browse through comment threads.
+
+## 🛠️ Available Tools (Total 29)
 
 ### Task Operations (10 tools)
 | Tool                      | Description                                                                         |
@@ -81,6 +87,15 @@ A comprehensive MCP (Model Context Protocol) server implementation that provides
 | `todoist_get_labels`     | List all labels with pagination support.                           |
 | `todoist_update_label`   | Update an existing label by its ID (name, color, favorite, order). |
 | `todoist_delete_label`   | Delete a label by its ID.                                          |
+
+### Comment Operations (5 tools)
+| Tool                       | Description                                                     |
+|----------------------------|-----------------------------------------------------------------|
+| `todoist_create_comment`   | Create a new comment on a task or project (with attachments).   |
+| `todoist_get_comment`      | Get a specific comment by its ID.                               |
+| `todoist_get_comments`     | Get comments for a task or project with pagination support.     |
+| `todoist_update_comment`   | Update an existing comment by its ID.                           |
+| `todoist_delete_comment`   | Delete a comment by its ID.                                     |
 
 ## 🚀 Installation & Setup
 
@@ -166,13 +181,16 @@ npm install -g @kydycode/todoist-mcp-server-ext@latest
 "Search tasks: search: API deployment"
 ```
 
-### 🗂️ Project, Section, and Label Management
+### 🗂️ Project, Section, Label, and Comment Management
 ```
 "List all my projects"
 "Create project 'Q2 Planning' color:blue favorite:true view:board"
 "Get sections for project {project_id}"
 "Create label 'HighPriority' color:red isFavorite:true"
 "List all labels"
+"Add comment 'Great progress on this task!' to task {task_id}"
+"Get all comments for project {project_id}"
+"Update comment {comment_id} with new content"
 ```
 
 ## 🆚 Extended vs Original Comparison
@@ -187,6 +205,7 @@ npm install -g @kydycode/todoist-mcp-server-ext@latest
 | **Project Management**      | Limited                              | ✅ 5 Tools: Full CRUD operations, sub-projects, pagination |
 | **Section Management**      | Basic                                | ✅ 4 Tools: Complete section operations               |
 | **Label Management**        | Not Available                        | ✅ 5 Tools: Full CRUD operations, pagination          |
+| **Comment Management**      | Not Available                        | ✅ 5 Tools: Full CRUD operations, attachments, pagination |
 | **API Parameter Handling**  | Inconsistent                         | ✅ Proper parameter validation                          |
 | **Response Formatting**     | Basic                                | ✅ Enhanced readability, more details                 |
 | **Build System**            | Issues                               | ✅ Clean compilation                                  |
