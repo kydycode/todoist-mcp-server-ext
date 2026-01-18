@@ -15,12 +15,13 @@ A comprehensive MCP (Model Context Protocol) server implementation that provides
 * **Optimized API Usage**: Efficient use of Todoist API, including `getTasksByFilter` for robust search and `moveTasks` for semantic task movement.
 * **Better Response Formatting**: Enhanced task, project, and label formatting for better readability, including project names in search results.
 
-### ✨ **Enhanced Task Management (10 Tools)**
+### ✨ **Enhanced Task Management (11 Tools)**
 * **Direct ID-based Operations**: Efficient task operations using task IDs.
 * **Comprehensive Task Creation**: Support for subtasks, labels, projects, sections, priorities.
 * **Quick Add Integration**: Natural language task creation using Todoist's Quick Add.
 * **Advanced Task Search**: Robust keyword search using Todoist's filter engine (`search: your query`).
 * **Task Movement Capabilities**: Move tasks between projects, sections, or make them subtasks.
+* **Bulk Task Operations**: Move multiple tasks with subtasks in a single operation.
 * **Task State Management**: Complete, reopen, and manage task lifecycle.
 * **Detailed Task Output**: Search and get-task operations return more task details.
 
@@ -46,9 +47,15 @@ A comprehensive MCP (Model Context Protocol) server implementation that provides
 * **Flexible Targeting**: Comments can be attached to either tasks or projects.
 * **Paginated Comment Retrieval**: Efficiently browse through comment threads.
 
-## 🛠️ Available Tools (Total 29)
+### ✅ **Completed Tasks History (1 Tool)** 🆕
+* **Sync API Integration**: Access completed task history via Todoist Sync API.
+* **Flexible Filtering**: Filter by project, date range (since/until).
+* **Pagination Support**: Retrieve large histories with limit/offset.
+* **Rich Metadata**: Shows project/section names, note counts, completion timestamps.
 
-### Task Operations (10 tools)
+## 🛠️ Available Tools (Total 31)
+
+### Task Operations (11 tools)
 | Tool                      | Description                                                                         |
 |---------------------------|-------------------------------------------------------------------------------------|
 | `todoist_create_task`     | Create tasks with full options (subtasks, labels, projects, sections, priorities).  |
@@ -61,6 +68,7 @@ A comprehensive MCP (Model Context Protocol) server implementation that provides
 | `todoist_reopen_task`     | Reopen completed task.                                                              |
 | `todoist_search_tasks`    | Search tasks using Todoist's filter engine (e.g., `search: keyword`).              |
 | `todoist_move_task`       | Move a task to a different project, section, or make it a subtask.                  |
+| `todoist_bulk_move_tasks` | Move multiple tasks with their subtasks to a project, section, or parent task.      |
 
 ### Project Operations (5 tools)
 | Tool                       | Description                                                                   |
@@ -96,6 +104,11 @@ A comprehensive MCP (Model Context Protocol) server implementation that provides
 | `todoist_get_comments`     | Get comments for a task or project with pagination support.     |
 | `todoist_update_comment`   | Update an existing comment by its ID.                           |
 | `todoist_delete_comment`   | Delete a comment by its ID.                                     |
+
+### Completed Tasks Operations (1 tool) 🆕
+| Tool                           | Description                                                     |
+|--------------------------------|-----------------------------------------------------------------|
+| `todoist_get_completed_tasks`  | Get completed tasks history with filtering by project, date range (since/until), and pagination. Uses Todoist Sync API. |
 
 ## 🚀 Installation & Setup
 
@@ -193,6 +206,15 @@ npm install -g @kydycode/todoist-mcp-server-ext@latest
 "Update comment {comment_id} with new content"
 ```
 
+### ✅ Completed Tasks History 🆕
+```
+"Show my completed tasks"
+"Get completed tasks from project {project_id}"
+"Show tasks completed since 2024-01-01"
+"Get completed tasks between 2024-01-01 and 2024-01-31"
+"Show last 50 completed tasks"
+```
+
 ## 🆚 Extended vs Original Comparison
 
 | Feature                     | Original                             | Extended Version (`@kydycode/todoist-mcp-server-ext`) |
@@ -201,11 +223,12 @@ npm install -g @kydycode/todoist-mcp-server-ext@latest
 | **MCP SDK Compatibility**   | Older version                        | ✅ Latest MCP SDK 0.5.0+                              |
 | **Error Handling**          | Basic                                | ✅ Comprehensive with detailed messages               |
 | **TypeScript Support**      | Limited                              | ✅ Full type safety                                   |
-| **Task Operations**         | Search-based, limited features       | ✅ 10 Tools: Direct ID-based, `moveTasks`, robust search, QuickAdd, full CRUD-like ops |
+| **Task Operations**         | Search-based, limited features       | ✅ 11 Tools: Direct ID-based, `moveTasks`, bulk move, robust search, QuickAdd, full CRUD-like ops |
 | **Project Management**      | Limited                              | ✅ 5 Tools: Full CRUD operations, sub-projects, pagination |
 | **Section Management**      | Basic                                | ✅ 4 Tools: Complete section operations               |
 | **Label Management**        | Not Available                        | ✅ 5 Tools: Full CRUD operations, pagination          |
 | **Comment Management**      | Not Available                        | ✅ 5 Tools: Full CRUD operations, attachments, pagination |
+| **Completed Tasks History** | Not Available                        | ✅ 1 Tool: Sync API integration, date filtering, pagination |
 | **API Parameter Handling**  | Inconsistent                         | ✅ Proper parameter validation                          |
 | **Response Formatting**     | Basic                                | ✅ Enhanced readability, more details                 |
 | **Build System**            | Issues                               | ✅ Clean compilation                                  |
