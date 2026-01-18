@@ -746,7 +746,7 @@ const GET_COMPLETED_TASKS_TOOL: Tool = {
 const server = new Server(
   {
     name: "todoist-mcp-server-enhanced",
-    version: "0.2.0",
+    version: "0.5.0",
   },
   {
     capabilities: {
