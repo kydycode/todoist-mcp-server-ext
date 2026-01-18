@@ -19,6 +19,26 @@ if (!TODOIST_API_TOKEN) {
 // Initialize Todoist client
 const todoistClient = new TodoistApi(TODOIST_API_TOKEN);
 
+// Type definitions for Sync API completed tasks
+interface CompletedTask {
+  id: string;
+  task_id: string;
+  content: string;
+  completed_at: string;
+  project_id: string;
+  section_id?: string;
+  user_id: string;
+  note_count: number;
+  meta_data?: any;
+}
+
+interface CompletedTasksResponse {
+  items: CompletedTask[];
+  projects?: { [id: string]: any };
+  sections?: { [id: string]: any };
+  has_more?: boolean;
+}
+
 // Enhanced Task Tools
 const CREATE_TASK_TOOL: Tool = {
   name: "todoist_create_task",
@@ -688,6 +708,40 @@ const DELETE_COMMENT_TOOL: Tool = {
   }
 };
 
+const GET_COMPLETED_TASKS_TOOL: Tool = {
+  name: "todoist_get_completed_tasks",
+  description: "Get completed tasks from Todoist with flexible filtering and pagination support. Uses the Todoist Sync API to retrieve task completion history.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: {
+        type: "string",
+        description: "Filter completed tasks by project ID (optional)"
+      },
+      since: {
+        type: "string",
+        description: "ISO 8601 datetime to get tasks completed after this date (e.g., '2024-01-01T00:00:00Z') (optional)"
+      },
+      until: {
+        type: "string",
+        description: "ISO 8601 datetime to get tasks completed before this date (e.g., '2024-12-31T23:59:59Z') (optional)"
+      },
+      limit: {
+        type: "number",
+        description: "Maximum number of completed tasks to return (default: 30, max: 200) (optional)"
+      },
+      offset: {
+        type: "number",
+        description: "Number of completed tasks to skip for pagination (default: 0) (optional)"
+      },
+      annotateNotes: {
+        type: "boolean",
+        description: "Include note details in the response (optional)"
+      }
+    }
+  }
+};
+
 // Server implementation
 const server = new Server(
   {
@@ -739,6 +793,67 @@ function formatComment(comment: any): string {
     if (comment.attachment.fileUrl) commentDetails += `\n  File URL: ${comment.attachment.fileUrl}`;
   }
   return commentDetails;
+}
+
+// Helper function to call Todoist Sync API
+async function callSyncAPI(endpoint: string, params: Record<string, any>): Promise<any> {
+  const url = `https://api.todoist.com/sync/v9/${endpoint}`;
+
+  // Build URL-encoded body
+  const formBody = Object.entries(params)
+    .filter(([_, value]) => value !== undefined && value !== null)
+    .map(([key, value]) => {
+      const encodedKey = encodeURIComponent(key);
+      const encodedValue = encodeURIComponent(typeof value === 'object' ? JSON.stringify(value) : String(value));
+      return `${encodedKey}=${encodedValue}`;
+    })
+    .join('&');
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${TODOIST_API_TOKEN}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: formBody,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Sync API error (${response.status}): ${errorText}`);
+  }
+
+  return response.json();
+}
+
+// Helper function to format completed task output
+function formatCompletedTask(task: CompletedTask, projectName?: string, sectionName?: string): string {
+  let taskDetails = `- Task ID: ${task.task_id}`;
+  taskDetails += `\n  Completion ID: ${task.id}`;
+  taskDetails += `\n  Content: ${task.content}`;
+  taskDetails += `\n  Completed At: ${task.completed_at}`;
+
+  if (projectName) {
+    taskDetails += `\n  Project: ${projectName} (${task.project_id})`;
+  } else if (task.project_id) {
+    taskDetails += `\n  Project ID: ${task.project_id}`;
+  }
+
+  if (sectionName) {
+    taskDetails += `\n  Section: ${sectionName} (${task.section_id})`;
+  } else if (task.section_id) {
+    taskDetails += `\n  Section ID: ${task.section_id}`;
+  }
+
+  if (task.note_count > 0) {
+    taskDetails += `\n  Notes: ${task.note_count}`;
+  }
+
+  if (task.meta_data) {
+    taskDetails += `\n  Metadata: ${JSON.stringify(task.meta_data)}`;
+  }
+
+  return taskDetails;
 }
 
 // Type guards for arguments
@@ -1079,6 +1194,43 @@ function isUpdateCommentArgs(args: unknown): args is {
   );
 }
 
+function isGetCompletedTasksArgs(args: unknown): args is {
+  projectId?: string;
+  since?: string;
+  until?: string;
+  limit?: number;
+  offset?: number;
+  annotateNotes?: boolean;
+} {
+  if (typeof args !== "object" || args === null) {
+    return false;
+  }
+
+  const typed = args as any;
+
+  // All parameters are optional, so check types only if present
+  if (typed.projectId !== undefined && typeof typed.projectId !== "string") {
+    return false;
+  }
+  if (typed.since !== undefined && typeof typed.since !== "string") {
+    return false;
+  }
+  if (typed.until !== undefined && typeof typed.until !== "string") {
+    return false;
+  }
+  if (typed.limit !== undefined && typeof typed.limit !== "number") {
+    return false;
+  }
+  if (typed.offset !== undefined && typeof typed.offset !== "number") {
+    return false;
+  }
+  if (typed.annotateNotes !== undefined && typeof typed.annotateNotes !== "boolean") {
+    return false;
+  }
+
+  return true;
+}
+
 // Tool handlers
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
@@ -1117,6 +1269,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     GET_COMMENTS_TOOL,
     UPDATE_COMMENT_TOOL,
     DELETE_COMMENT_TOOL,
+    // Completed tasks tool (Sync API)
+    GET_COMPLETED_TASKS_TOOL,
   ],
 }));
 
@@ -1801,12 +1955,78 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       try {
         await todoistClient.deleteComment(args.commentId);
-        return { 
-          content: [{ type: "text", text: `Comment ${args.commentId} deleted.` }], 
-          isError: false 
+        return {
+          content: [{ type: "text", text: `Comment ${args.commentId} deleted.` }],
+          isError: false
         };
       } catch (error: any) {
         return { content: [{ type: "text", text: `Error deleting comment: ${error.message}` }], isError: true };
+      }
+    }
+
+    if (name === "todoist_get_completed_tasks") {
+      if (!isGetCompletedTasksArgs(args)) {
+        return {
+          content: [{ type: "text", text: "Invalid arguments for get_completed_tasks" }],
+          isError: true
+        };
+      }
+
+      try {
+        // Build Sync API parameters
+        const syncParams: Record<string, any> = {};
+        if (args.projectId) syncParams.project_id = args.projectId;
+        if (args.since) syncParams.since = args.since;
+        if (args.until) syncParams.until = args.until;
+        if (args.limit !== undefined) syncParams.limit = Math.min(args.limit, 200);
+        if (args.offset !== undefined) syncParams.offset = args.offset;
+        if (args.annotateNotes) syncParams.annotate_notes = true;
+
+        // Call Sync API
+        const response: CompletedTasksResponse = await callSyncAPI('completed/get_all', syncParams);
+
+        if (!response.items || response.items.length === 0) {
+          return {
+            content: [{
+              type: "text",
+              text: "No completed tasks found matching the specified criteria"
+            }],
+            isError: false
+          };
+        }
+
+        // Format completed tasks with project/section names if available
+        const formattedTasks = response.items.map(task => {
+          const projectName = response.projects?.[task.project_id]?.name;
+          const sectionName = response.sections?.[task.section_id || '']?.name;
+          return formatCompletedTask(task, projectName, sectionName);
+        });
+
+        const taskList = formattedTasks.join('\n\n');
+
+        // Build pagination info
+        let paginationInfo = '';
+        if (response.has_more || (args.limit && response.items.length === args.limit)) {
+          const nextOffset = (args.offset || 0) + response.items.length;
+          paginationInfo = `\n\nPagination: Showing ${response.items.length} task(s). `;
+          paginationInfo += `Use offset=${nextOffset} to retrieve the next page.`;
+        }
+
+        return {
+          content: [{
+            type: "text",
+            text: `Completed Tasks (${response.items.length} found):\n\n${taskList}${paginationInfo}`
+          }],
+          isError: false
+        };
+      } catch (error: any) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error getting completed tasks: ${error.message}`
+          }],
+          isError: true
+        };
       }
     }
 
