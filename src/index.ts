@@ -756,7 +756,7 @@ const GET_COMPLETED_TASKS_TOOL: Tool = {
 const server = new Server(
   {
     name: "todoist-mcp-server-enhanced",
-    version: "0.6.0",
+    version: "0.6.1",
   },
   {
     capabilities: {
@@ -1994,7 +1994,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (args.cursor) queryParams.cursor = args.cursor;
 
         // Call API v1 completed tasks endpoint
-        const response: CompletedTasksResponse = await callTodoistAPIv1('tasks/completed_by_completion_date', queryParams);
+        const response: CompletedTasksResponse = await callTodoistAPIv1('tasks/completed/by_completion_date', queryParams);
 
         if (!response.items || response.items.length === 0) {
           return {

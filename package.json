@@ -1,6 +1,6 @@
 {
   "name": "@kydycode/todoist-mcp-server-ext",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Extended MCP server for Todoist API integration with enhanced features and improved compatibility",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
