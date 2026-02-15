@@ -48,7 +48,7 @@ A comprehensive MCP (Model Context Protocol) server implementation that provides
 * **Paginated Comment Retrieval**: Efficiently browse through comment threads.
 
 ### ✅ **Completed Tasks History (1 Tool)** 🆕
-* **REST API v1 Integration**: Access completed task history via Todoist API v1 (`/api/v1/tasks/completed_by_completion_date`). Migrated from deprecated Sync API v9.
+* **REST API v1 Integration**: Access completed task history via Todoist API v1 (`/api/v1/tasks/completed/by_completion_date`). Migrated from deprecated Sync API v9.
 * **Flexible Filtering**: Filter by project, section, date range (since/until).
 * **Cursor-based Pagination**: Efficient retrieval of large histories.
 * **Rich Metadata**: Shows labels, priorities, descriptions, note counts, completion timestamps.
