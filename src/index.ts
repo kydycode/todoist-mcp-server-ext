@@ -19,24 +19,33 @@ if (!TODOIST_API_TOKEN) {
 // Initialize Todoist client
 const todoistClient = new TodoistApi(TODOIST_API_TOKEN);
 
-// Type definitions for Sync API completed tasks
-interface CompletedTask {
+// Type definitions for API v1 completed tasks
+interface CompletedTaskItem {
   id: string;
-  task_id: string;
   content: string;
-  completed_at: string;
+  description: string;
   project_id: string;
-  section_id?: string;
+  section_id: string | null;
+  parent_id: string | null;
+  labels: string[];
+  priority: number;
+  checked: boolean;
+  completed_at: string | null;
+  added_at: string | null;
+  due: {
+    is_recurring: boolean;
+    string: string;
+    date: string;
+    datetime?: string | null;
+    timezone?: string | null;
+  } | null;
   user_id: string;
   note_count: number;
-  meta_data?: any;
 }
 
 interface CompletedTasksResponse {
-  items: CompletedTask[];
-  projects?: { [id: string]: any };
-  sections?: { [id: string]: any };
-  has_more?: boolean;
+  items: CompletedTaskItem[];
+  next_cursor: string | null;
 }
 
 // Enhanced Task Tools
@@ -710,35 +719,36 @@ const DELETE_COMMENT_TOOL: Tool = {
 
 const GET_COMPLETED_TASKS_TOOL: Tool = {
   name: "todoist_get_completed_tasks",
-  description: "Get completed tasks from Todoist with flexible filtering and pagination support. Uses the Todoist Sync API to retrieve task completion history.",
+  description: "Get completed tasks from Todoist with flexible filtering and pagination support. Uses the Todoist API v1 to retrieve task completion history.",
   inputSchema: {
     type: "object",
     properties: {
+      since: {
+        type: "string",
+        description: "ISO 8601 datetime to get tasks completed after this date (e.g., '2024-01-01T00:00:00Z') (required)"
+      },
+      until: {
+        type: "string",
+        description: "ISO 8601 datetime to get tasks completed before this date (e.g., '2024-12-31T23:59:59Z') (required)"
+      },
       projectId: {
         type: "string",
         description: "Filter completed tasks by project ID (optional)"
       },
-      since: {
+      sectionId: {
         type: "string",
-        description: "ISO 8601 datetime to get tasks completed after this date (e.g., '2024-01-01T00:00:00Z') (optional)"
-      },
-      until: {
-        type: "string",
-        description: "ISO 8601 datetime to get tasks completed before this date (e.g., '2024-12-31T23:59:59Z') (optional)"
+        description: "Filter completed tasks by section ID (optional)"
       },
       limit: {
         type: "number",
-        description: "Maximum number of completed tasks to return (default: 30, max: 200) (optional)"
+        description: "Maximum number of completed tasks to return (default: 50, max: 200) (optional)"
       },
-      offset: {
-        type: "number",
-        description: "Number of completed tasks to skip for pagination (default: 0) (optional)"
-      },
-      annotateNotes: {
-        type: "boolean",
-        description: "Include note details in the response (optional)"
+      cursor: {
+        type: "string",
+        description: "Cursor for pagination, use next_cursor from previous response (optional)"
       }
-    }
+    },
+    required: ["since", "until"]
   }
 };
 
@@ -746,7 +756,7 @@ const GET_COMPLETED_TASKS_TOOL: Tool = {
 const server = new Server(
   {
     name: "todoist-mcp-server-enhanced",
-    version: "0.5.0",
+    version: "0.6.0",
   },
   {
     capabilities: {
@@ -795,43 +805,42 @@ function formatComment(comment: any): string {
   return commentDetails;
 }
 
-// Helper function to call Todoist Sync API
-async function callSyncAPI(endpoint: string, params: Record<string, any>): Promise<any> {
-  const url = `https://api.todoist.com/sync/v9/${endpoint}`;
-
-  // Build URL-encoded body
-  const formBody = Object.entries(params)
+// Helper function to call Todoist API v1 (REST)
+async function callTodoistAPIv1(endpoint: string, params: Record<string, any>): Promise<any> {
+  const queryParams = Object.entries(params)
     .filter(([_, value]) => value !== undefined && value !== null)
     .map(([key, value]) => {
-      const encodedKey = encodeURIComponent(key);
-      const encodedValue = encodeURIComponent(typeof value === 'object' ? JSON.stringify(value) : String(value));
-      return `${encodedKey}=${encodedValue}`;
+      return `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`;
     })
     .join('&');
 
+  const url = `https://api.todoist.com/api/v1/${endpoint}${queryParams ? '?' + queryParams : ''}`;
+
   const response = await fetch(url, {
-    method: 'POST',
+    method: 'GET',
     headers: {
       'Authorization': `Bearer ${TODOIST_API_TOKEN}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: formBody,
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Sync API error (${response.status}): ${errorText}`);
+    throw new Error(`Todoist API v1 error (${response.status}): ${errorText}`);
   }
 
   return response.json();
 }
 
 // Helper function to format completed task output
-function formatCompletedTask(task: CompletedTask, projectName?: string, sectionName?: string): string {
-  let taskDetails = `- Task ID: ${task.task_id}`;
-  taskDetails += `\n  Completion ID: ${task.id}`;
+function formatCompletedTask(task: CompletedTaskItem, projectName?: string, sectionName?: string): string {
+  let taskDetails = `- ID: ${task.id}`;
   taskDetails += `\n  Content: ${task.content}`;
-  taskDetails += `\n  Completed At: ${task.completed_at}`;
+  if (task.description) {
+    taskDetails += `\n  Description: ${task.description}`;
+  }
+  if (task.completed_at) {
+    taskDetails += `\n  Completed At: ${task.completed_at}`;
+  }
 
   if (projectName) {
     taskDetails += `\n  Project: ${projectName} (${task.project_id})`;
@@ -845,12 +854,16 @@ function formatCompletedTask(task: CompletedTask, projectName?: string, sectionN
     taskDetails += `\n  Section ID: ${task.section_id}`;
   }
 
-  if (task.note_count > 0) {
-    taskDetails += `\n  Notes: ${task.note_count}`;
+  if (task.labels && task.labels.length > 0) {
+    taskDetails += `\n  Labels: ${task.labels.join(', ')}`;
   }
 
-  if (task.meta_data) {
-    taskDetails += `\n  Metadata: ${JSON.stringify(task.meta_data)}`;
+  if (task.priority > 1) {
+    taskDetails += `\n  Priority: ${task.priority}`;
+  }
+
+  if (task.note_count > 0) {
+    taskDetails += `\n  Notes: ${task.note_count}`;
   }
 
   return taskDetails;
@@ -1195,12 +1208,12 @@ function isUpdateCommentArgs(args: unknown): args is {
 }
 
 function isGetCompletedTasksArgs(args: unknown): args is {
+  since: string;
+  until: string;
   projectId?: string;
-  since?: string;
-  until?: string;
+  sectionId?: string;
   limit?: number;
-  offset?: number;
-  annotateNotes?: boolean;
+  cursor?: string;
 } {
   if (typeof args !== "object" || args === null) {
     return false;
@@ -1208,23 +1221,20 @@ function isGetCompletedTasksArgs(args: unknown): args is {
 
   const typed = args as any;
 
-  // All parameters are optional, so check types only if present
+  // since and until are required
+  if (typeof typed.since !== "string" || typeof typed.until !== "string") {
+    return false;
+  }
   if (typed.projectId !== undefined && typeof typed.projectId !== "string") {
     return false;
   }
-  if (typed.since !== undefined && typeof typed.since !== "string") {
-    return false;
-  }
-  if (typed.until !== undefined && typeof typed.until !== "string") {
+  if (typed.sectionId !== undefined && typeof typed.sectionId !== "string") {
     return false;
   }
   if (typed.limit !== undefined && typeof typed.limit !== "number") {
     return false;
   }
-  if (typed.offset !== undefined && typeof typed.offset !== "number") {
-    return false;
-  }
-  if (typed.annotateNotes !== undefined && typeof typed.annotateNotes !== "boolean") {
+  if (typed.cursor !== undefined && typeof typed.cursor !== "string") {
     return false;
   }
 
@@ -1967,23 +1977,24 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     if (name === "todoist_get_completed_tasks") {
       if (!isGetCompletedTasksArgs(args)) {
         return {
-          content: [{ type: "text", text: "Invalid arguments for get_completed_tasks" }],
+          content: [{ type: "text", text: "Invalid arguments for get_completed_tasks. 'since' and 'until' are required ISO 8601 datetime strings." }],
           isError: true
         };
       }
 
       try {
-        // Build Sync API parameters
-        const syncParams: Record<string, any> = {};
-        if (args.projectId) syncParams.project_id = args.projectId;
-        if (args.since) syncParams.since = args.since;
-        if (args.until) syncParams.until = args.until;
-        if (args.limit !== undefined) syncParams.limit = Math.min(args.limit, 200);
-        if (args.offset !== undefined) syncParams.offset = args.offset;
-        if (args.annotateNotes) syncParams.annotate_notes = true;
+        // Build API v1 query parameters
+        const queryParams: Record<string, any> = {
+          since: args.since,
+          until: args.until,
+        };
+        if (args.projectId) queryParams.project_id = args.projectId;
+        if (args.sectionId) queryParams.section_id = args.sectionId;
+        if (args.limit !== undefined) queryParams.limit = Math.min(args.limit, 200);
+        if (args.cursor) queryParams.cursor = args.cursor;
 
-        // Call Sync API
-        const response: CompletedTasksResponse = await callSyncAPI('completed/get_all', syncParams);
+        // Call API v1 completed tasks endpoint
+        const response: CompletedTasksResponse = await callTodoistAPIv1('tasks/completed_by_completion_date', queryParams);
 
         if (!response.items || response.items.length === 0) {
           return {
@@ -1995,21 +2006,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           };
         }
 
-        // Format completed tasks with project/section names if available
+        // Format completed tasks
         const formattedTasks = response.items.map(task => {
-          const projectName = response.projects?.[task.project_id]?.name;
-          const sectionName = response.sections?.[task.section_id || '']?.name;
-          return formatCompletedTask(task, projectName, sectionName);
+          return formatCompletedTask(task);
         });
 
         const taskList = formattedTasks.join('\n\n');
 
         // Build pagination info
         let paginationInfo = '';
-        if (response.has_more || (args.limit && response.items.length === args.limit)) {
-          const nextOffset = (args.offset || 0) + response.items.length;
+        if (response.next_cursor) {
           paginationInfo = `\n\nPagination: Showing ${response.items.length} task(s). `;
-          paginationInfo += `Use offset=${nextOffset} to retrieve the next page.`;
+          paginationInfo += `More results available. Use cursor="${response.next_cursor}" to retrieve the next page.`;
         }
 
         return {

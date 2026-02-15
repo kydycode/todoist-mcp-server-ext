@@ -3,7 +3,7 @@
 
 > **Extended Version** - Forked and enhanced by [kydycode](https://github.com/kydycode) from the original [@abhiz123/todoist-mcp-server](https://github.com/abhiz123/todoist-mcp-server)
 
-A comprehensive MCP (Model Context Protocol) server implementation that provides full integration between Claude and Todoist. This **extended version** includes additional features, improved compatibility, and enhanced functionality using the complete Todoist API with the latest MCP SDK (`@doist/todoist-api-typescript@4.0.4`).
+A comprehensive MCP (Model Context Protocol) server implementation that provides full integration between Claude and Todoist. This **extended version** includes additional features, improved compatibility, and enhanced functionality using the complete Todoist API with the latest MCP SDK (`@doist/todoist-api-typescript@4.0.4`). Completed tasks retrieval uses the Todoist REST API v1.
 
 ## 🆕 Extended Version Features
 
@@ -48,10 +48,10 @@ A comprehensive MCP (Model Context Protocol) server implementation that provides
 * **Paginated Comment Retrieval**: Efficiently browse through comment threads.
 
 ### ✅ **Completed Tasks History (1 Tool)** 🆕
-* **Sync API Integration**: Access completed task history via Todoist Sync API.
-* **Flexible Filtering**: Filter by project, date range (since/until).
-* **Pagination Support**: Retrieve large histories with limit/offset.
-* **Rich Metadata**: Shows project/section names, note counts, completion timestamps.
+* **REST API v1 Integration**: Access completed task history via Todoist API v1 (`/api/v1/tasks/completed_by_completion_date`). Migrated from deprecated Sync API v9.
+* **Flexible Filtering**: Filter by project, section, date range (since/until).
+* **Cursor-based Pagination**: Efficient retrieval of large histories.
+* **Rich Metadata**: Shows labels, priorities, descriptions, note counts, completion timestamps.
 
 ## 🛠️ Available Tools (Total 31)
 
@@ -108,7 +108,7 @@ A comprehensive MCP (Model Context Protocol) server implementation that provides
 ### Completed Tasks Operations (1 tool) 🆕
 | Tool                           | Description                                                     |
 |--------------------------------|-----------------------------------------------------------------|
-| `todoist_get_completed_tasks`  | Get completed tasks history with filtering by project, date range (since/until), and pagination. Uses Todoist Sync API. |
+| `todoist_get_completed_tasks`  | Get completed tasks history with filtering by project, section, date range (since/until required), and cursor-based pagination. Uses Todoist REST API v1. |
 
 ## 🚀 Installation & Setup
 
@@ -208,11 +208,10 @@ npm install -g @kydycode/todoist-mcp-server-ext@latest
 
 ### ✅ Completed Tasks History 🆕
 ```
-"Show my completed tasks"
-"Get completed tasks from project {project_id}"
-"Show tasks completed since 2024-01-01"
 "Get completed tasks between 2024-01-01 and 2024-01-31"
-"Show last 50 completed tasks"
+"Show tasks completed since 2024-01-01 until today"
+"Get completed tasks from project {project_id} since 2024-01-01 until 2024-12-31"
+"Show last week's completed tasks"
 ```
 
 ## 🆚 Extended vs Original Comparison
@@ -228,7 +227,7 @@ npm install -g @kydycode/todoist-mcp-server-ext@latest
 | **Section Management**      | Basic                                | ✅ 4 Tools: Complete section operations               |
 | **Label Management**        | Not Available                        | ✅ 5 Tools: Full CRUD operations, pagination          |
 | **Comment Management**      | Not Available                        | ✅ 5 Tools: Full CRUD operations, attachments, pagination |
-| **Completed Tasks History** | Not Available                        | ✅ 1 Tool: Sync API integration, date filtering, pagination |
+| **Completed Tasks History** | Not Available                        | ✅ 1 Tool: REST API v1 integration, date filtering, cursor pagination |
 | **API Parameter Handling**  | Inconsistent                         | ✅ Proper parameter validation                          |
 | **Response Formatting**     | Basic                                | ✅ Enhanced readability, more details                 |
 | **Build System**            | Issues                               | ✅ Clean compilation                                  |
