@@ -112,6 +112,14 @@ A comprehensive MCP (Model Context Protocol) server implementation that provides
 
 ## 🚀 Installation & Setup
 
+### Installing via Smithery
+
+To install todoist-mcp-server-ext for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@kydycode/todoist-mcp-server-ext):
+
+```bash
+npx -y @smithery/cli install @kydycode/todoist-mcp-server-ext --client claude
+```
+
 ### Local Development Setup
 
 ```bash
